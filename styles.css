@@ -185,6 +185,13 @@
   overflow-y: auto;
   padding: 8px;
   scroll-behavior: smooth;
+  display: flex;
+  flex-direction: column;
+}
+
+#cm-list::before {
+  content: '';
+  flex: 1 1 auto;
 }
 
 /* Scrollbar */
