@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "ChatMastery",
+  "version": "0.2.0",
+  "description": "Your AI learning companion. Tracks depth, mastery, and helps you learn, not just ask.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
