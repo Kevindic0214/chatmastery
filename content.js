@@ -21,7 +21,7 @@
     refresh: '<path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>',
     min: '<path d="M6 19h12v2H6z"/>',
     hide: '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>', // eye
-    logo: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>' // question mark circle
+    logo: '<path d="M13.5 2.09C7.67 1.47 2.62 5.64 2.05 11.46c-.46 4.64 2.15 8.83 6.2 10.54.57.24 1.14-.33.93-.9-.2-.52-.72-.78-1.18-1.02-2.87-1.5-4.67-4.69-4.23-8.15.56-4.41 4.62-7.54 9.03-7.03 3.78.44 6.73 3.58 6.95 7.39.18 3.17-1.44 5.98-3.95 7.53-.35.22-.59.61-.59 1.05v.26c0 .72.6 1.3 1.32 1.26 .25-.02.5-.12.7-.27C20.71 19.16 22.5 15.56 22 11.47 21.37 6.17 17.14 2.57 13.5 2.09zM12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>' // radar/focus icon
   };
 
   // File detection helpers (Same as before)
@@ -215,7 +215,27 @@
 
     launcher = document.createElement("div");
     launcher.id = LAUNCHER_ID;
-    launcher.innerHTML = getIcon("logo"); // or just "M" text
+
+    // Build inner structure: progress ring + icon
+    const SIZE = 48;
+    const STROKE = 3;
+    const RADIUS = (SIZE - STROKE) / 2;
+    const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+    launcher.innerHTML = `
+      <svg class="cm-launcher-ring" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+        <circle class="cm-ring-bg" cx="${SIZE / 2}" cy="${SIZE / 2}" r="${RADIUS}"
+          fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="${STROKE}"/>
+        <circle class="cm-ring-fill" id="cm-launcher-ring-fill"
+          cx="${SIZE / 2}" cy="${SIZE / 2}" r="${RADIUS}"
+          fill="none" stroke="var(--cm-accent)" stroke-width="${STROKE}"
+          stroke-linecap="round"
+          stroke-dasharray="${CIRCUMFERENCE}"
+          stroke-dashoffset="${CIRCUMFERENCE}"
+          transform="rotate(-90 ${SIZE / 2} ${SIZE / 2})"/>
+      </svg>
+      <div class="cm-launcher-icon">${getIcon("logo")}</div>
+    `;
     launcher.title = "Open ChatMastery";
 
     launcher.addEventListener("click", () => {
@@ -230,20 +250,47 @@
     return launcher;
   }
 
+  function updateLauncherProgress() {
+    const ring = document.getElementById("cm-launcher-ring-fill");
+    if (!ring) return;
+    const { current, goal } = StorageManager.getGoalProgress();
+    const pct = Math.min(1, current / goal);
+    const STROKE = 3;
+    const SIZE = 48;
+    const RADIUS = (SIZE - STROKE) / 2;
+    const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+    const offset = CIRCUMFERENCE * (1 - pct);
+    ring.style.strokeDashoffset = offset;
+  }
+
   function setMinimized(minimized, opts = {}) {
     const panel = document.getElementById(PANEL_ID);
     const launcher = ensureLauncher();
     if (!panel || !launcher) return;
 
     if (minimized) {
+      // 1. Save panel position while it's still visible
       saveSharedPosFrom(panel);
-      applySharedPosTo(launcher);
+      // 2. Show launcher first (so getBoundingClientRect works for placeFixed)
       launcher.classList.remove("cm-hidden");
+      launcher.style.display = "flex";
+      // 3. Apply saved position to the now-visible launcher
+      applySharedPosTo(launcher);
+      // 4. Hide panel
       panel.classList.add("cm-hidden");
     } else {
-      // saveSharedPosFrom(launcher);
-      // applySharedPosTo(panel);
+      // 1. Save launcher position while it's still visible
+      saveSharedPosFrom(launcher);
+      // 2. Show panel first (so getBoundingClientRect works for placeFixed)
       panel.classList.remove("cm-hidden");
+      panel.style.display = "flex";
+      // Re-trigger entrance animation
+      panel.style.animation = "none";
+      panel.offsetHeight; // force reflow
+      panel.style.animation = "";
+      // 3. Apply saved position to the now-visible panel
+      applySharedPosTo(panel);
+      // 4. Hide launcher
       launcher.classList.add("cm-hidden");
     }
     if (!opts.skipSave) UIStorage.save({ minimized: !!minimized });
@@ -269,7 +316,11 @@
     `;
 
     // Events
-    header.querySelector("#btn-refresh").onclick = () => rebuild({ force: true });
+    header.querySelector("#btn-refresh").onclick = () => {
+      // Reset build cache so rebuild performs a full re-scan
+      lastBuiltUserCount = -1;
+      rebuild({ force: true });
+    };
     header.querySelector("#btn-min").onclick = () => setMinimized(true);
     header.querySelector("#btn-hide").onclick = () => {
       const list = panel.querySelector("#" + LIST_ID);
@@ -322,11 +373,22 @@
       onDragEnd: (el) => saveSharedPosFrom(el)
     });
 
-    // Initial State
+    // Initial State - apply saved position & minimized state directly
     const s = UIStorage.load();
-    applySharedPosTo(panel);
-    if (s.minimized) setMinimized(true, { skipSave: true });
-    else setMinimized(false, { skipSave: true });
+    const launcher = ensureLauncher();
+
+    if (s.minimized) {
+      // Start minimized: show launcher, hide panel
+      panel.classList.add("cm-hidden");
+      launcher.classList.remove("cm-hidden");
+      launcher.style.display = "flex";
+      applySharedPosTo(launcher);
+    } else {
+      // Start expanded: show panel, hide launcher
+      launcher.classList.add("cm-hidden");
+      panel.classList.remove("cm-hidden");
+      applySharedPosTo(panel);
+    }
   }
 
   // =========================
@@ -408,6 +470,7 @@
     for (let i = 0; i < uniqueTurns.length; i++) {
       const t = uniqueTurns[i];
       const id = t._cmId;
+      assignStableId(t, i); // Attach id & data-cm-id to the original DOM node for scroll targeting
       const globalIndex = start + i; // Index relative to start of slice
       const userDisp = getUserDisplay(t.user);
 
@@ -486,7 +549,8 @@
       // Click
       item.addEventListener("click", () => {
         const el = document.getElementById(id) || document.querySelector(`[${DATA_ID}="${id}"]`);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
         list.querySelectorAll(".cm-item").forEach(x => x.classList.remove("active"));
         item.classList.add("active");
       });
@@ -526,6 +590,9 @@
 
     const pct = Math.min(100, Math.round((current / goal) * 100));
     wBar.style.width = pct + "%";
+
+    // Also update launcher ring
+    updateLauncherProgress();
   }
 
   // =========================
@@ -678,10 +745,12 @@
     // Prefix "cm-" to avoid collisions with page IDs
     const id = `cm-${djb2Hash(txt)}`;
 
-    if (!turn.root.getAttribute(DATA_ID)) {
-      turn.root.setAttribute(DATA_ID, id);
-      turn.root.id = id;
-    }
+    // If this turn already has a stable ID, keep it (don't overwrite)
+    const existing = turn.root.getAttribute?.(DATA_ID);
+    if (existing) return existing;
+
+    turn.root.setAttribute(DATA_ID, id);
+    if (!turn.root.id) turn.root.id = id; // Only set id if the element doesn't already have one
     return id;
   }
 
@@ -715,7 +784,10 @@
   function applySharedPosTo(el) {
     if (!el) return;
     const s = UIStorage.load();
-    if (typeof s.posLeft === "number") placeFixed(el, s.posLeft, s.posTop);
+    if (typeof s.posLeft === "number") {
+      placeFixed(el, s.posLeft, s.posTop);
+    }
+    // No saved position → let CSS defaults handle positioning
   }
 
   function makeDraggable(target, handle, { onDragEnd } = {}) {

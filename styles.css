@@ -21,9 +21,8 @@
 /* Base Panel - Glassmorphism */
 #cm-panel {
   position: fixed;
-  bottom: 20px;
-  top: auto;
   right: 20px;
+  top: 70px;
   width: 300px;
   height: calc(100vh - 140px);
   max-height: 800px;
@@ -323,12 +322,13 @@
 #cm-launcher {
   position: fixed;
   right: 20px;
-  bottom: 20px;
+  top: 50%;
+  margin-top: -24px;
   width: 48px;
   height: 48px;
   border-radius: 50%;
   background: var(--cm-bg-solid);
-  border: 1px solid var(--cm-border);
+  border: none;
   box-shadow: var(--cm-shadow);
   color: var(--cm-accent);
   display: flex;
@@ -340,10 +340,47 @@
   animation: cmPopup 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
 }
 
+/* Progress ring (SVG overlay) */
+.cm-launcher-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 48px;
+  height: 48px;
+  pointer-events: none;
+}
+
+.cm-ring-fill {
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  filter: drop-shadow(0 0 4px var(--cm-accent-glow));
+}
+
+/* Icon container (centered inside launcher) */
+.cm-launcher-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cm-launcher-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
 #cm-launcher:hover {
   transform: scale(1.1);
   box-shadow: 0 8px 24px rgba(45, 212, 191, 0.2);
-  border-color: var(--cm-accent);
+}
+
+#cm-launcher:hover .cm-ring-fill {
+  filter: drop-shadow(0 0 8px var(--cm-accent-glow));
 }
 
 @keyframes cmPopup {
